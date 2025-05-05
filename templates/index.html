@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Project Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        academic: {
+                            blue: '#1a4b8c',
+                            lightblue: '#e6f0fa',
+                            green: '#2e7d32',
+                            red: '#c62828',
+                            yellow: '#f9a825'
+                        }
+                    },
+                    transitionProperty: {
+                        'visibility': 'visibility, opacity'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-academic-blue mb-2">Academic Project Assistant</h1>
+            <p class="text-gray-600">Your complete solution for academic project research and documentation</p>
+        </header>
+
+        <!-- Error Message -->
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span class="block sm:inline">{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Search Bar -->
+        <form id="searchForm" action="/search" method="POST" class="mb-8 flex gap-2">
+            <input type="text" name="query" placeholder="E.g., IoT-based Smart Agriculture System"
+                class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required value="{{ query if query else '' }}" id="searchInput">
+            <button type="submit"
+                class="bg-academic-blue hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+
+        <div class="mb-8 bg-academic-lightblue p-4 rounded-lg relative">
+            <!-- Close button -->
+            <button onclick="hideIdeasSection()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                title="Hide this section">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <h2 class="text-lg font-semibold text-academic-blue mb-3">Need project ideas?</h2>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <button onclick="toggleIdeas('ai')" id="aiBtn"
+                    class="px-4 py-2 bg-white rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition flex items-center">
+                    <i class="fas fa-brain mr-2"></i>AI/ML
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+                <button onclick="toggleIdeas('iot')" id="iotBtn"
+                    class="px-4 py-2 bg-white rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition flex items-center">
+                    <i class="fas fa-microchip mr-2"></i>IoT
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+                <button onclick="toggleIdeas('web')" id="webBtn"
+                    class="px-4 py-2 bg-white rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition flex items-center">
+                    <i class="fas fa-code mr-2"></i>Web Dev
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+                <button onclick="toggleIdeas('ml')" id="mlBtn"
+                    class="px-4 py-2 bg-white rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition flex items-center">
+                    <i class="fas fa-robot mr-2"></i>Machine Learning
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+                <button onclick="toggleIdeas('cyber')" id="cyberBtn"
+                    class="px-4 py-2 bg-white rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition flex items-center">
+                    <i class="fas fa-shield-alt mr-2"></i>Cyber Security
+                    <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                </button>
+            </div>
+
+            <div id="ideasContainer" class="hidden mt-3 bg-white p-4 rounded-lg shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 id="ideasDomain" class="font-medium">AI/ML Project Ideas</h3>
+                    <button onclick="refreshIdeas()" class="text-academic-blue text-sm flex items-center">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
+                <div id="ideasList" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+                <div class="mt-3 text-xs text-gray-500">
+                    <i class="fas fa-lightbulb mr-1"></i> Click any idea to search for resources
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="{% if not query %}hidden{% endif %}">
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 mb-4 overflow-x-auto">
+                <button onclick="showTab('papers')" id="papersTab"
+                    class="py-2 px-4 font-medium border-b-2 {% if query %}border-academic-blue text-academic-blue{% else %}border-transparent text-gray-500{% endif %} whitespace-nowrap">
+                    <i class="fas fa-file-alt mr-2"></i>Research Papers
+                </button>
+                <button onclick="showTab('code')" id="codeTab"
+                    class="py-2 px-4 font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+                    <i class="fas fa-code mr-2"></i>Code Repositories
+                </button>
+                <button onclick="showTab('ppts')" id="pptsTab"
+                    class="py-2 px-4 font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+                    <i class="fas fa-file-powerpoint mr-2"></i>PPT Templates
+                </button>
+                <button onclick="showTab('datasets')" id="datasetsTab"
+                    class="py-2 px-4 font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+                    <i class="fas fa-database mr-2"></i>Datasets
+                </button>
+                <button onclick="showTab('paraphrase')" id="paraphraseTab"
+                    class="py-2 px-4 font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+                    <i class="fas fa-paragraph mr-2"></i>Paraphrase Tool
+                </button>
+            </div>
+
+            <!-- Papers Content -->
+            <div id="papersContent" class="tab-content">
+                {% if papers %}
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Found {{ papers|length }} resources ({{
+                            papers|selectattr('direct_pdf')|list|length }} with PDFs):</h3>
+                        <div class="flex gap-3">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="pdfFilter" onchange="filterPapers()" class="h-4 w-4">
+                                <label for="pdfFilter" class="text-sm text-gray-600">Show only PDFs</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="papersGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for paper in papers %}
+                        <div class="paper-item bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+                            data-haspdf="{{ 'true' if paper.direct_pdf else 'false' }}">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg text-academic-blue">{{ paper.title }}</h3>
+                                <span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">{{ paper.source
+                                    }}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-3">
+                                <span class="summary-text">{{ paper.summary[:200] }}</span>
+                                {% if paper.summary|length > 200 %}
+                                <span class="summary-more hidden">{{ paper.summary[200:] }}</span>
+                                <button class="text-academic-blue text-xs read-more-btn">...Read more</button>
+                                {% endif %}
+                            </p>
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-500">{{ paper.published if paper.published else 'Date not
+                                    available' }}</span>
+                                <div class="flex gap-2">
+                                    <a href="{{ paper.link }}" target="_blank"
+                                        class="text-academic-blue hover:text-blue-700 px-2 py-1 border border-blue-200 rounded text-xs">
+                                        <i class="fas fa-info-circle mr-1"></i>Details
+                                    </a>
+                                    {% if paper.direct_pdf %}
+                                    <a href="{{ paper.pdf_link }}" target="_blank"
+                                        class="bg-academic-blue text-white hover:bg-blue-700 px-2 py-1 rounded text-xs flex items-center">
+                                        <i class="fas fa-file-pdf mr-1"></i>PDF
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
+                    <i class="fas fa-file-alt text-4xl mb-2"></i>
+                    <p>No papers found. Try a different query.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Code Content -->
+            <div id="codeContent" class="tab-content hidden">
+                {% if code %}
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Found {{ code|length }} repositories:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for repo in code %}
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg text-academic-blue">{{ repo.name }}</h3>
+                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ repo.language
+                                    }}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-3">
+                                <span class="summary-text">{{ repo.description[:200] }}</span>
+                                {% if repo.description|length > 200 %}
+                                <span class="summary-more hidden">{{ repo.description[200:] }}</span>
+                                <button class="text-academic-blue text-xs read-more-btn">...Read more</button>
+                                {% endif %}
+                            </p>
+                            <div class="flex justify-between items-center text-sm">
+                                <div>
+                                    <span class="text-gray-500 mr-3">{{ repo.stars }} <i
+                                            class="fas fa-star text-yellow-400"></i></span>
+                                    <span class="text-gray-500 text-xs">{{ repo.last_updated }}</span>
+                                </div>
+                                <a href="{{ repo.url }}" target="_blank" class="text-academic-blue hover:text-blue-700">
+                                    <i class="fas fa-external-link-alt mr-1"></i>View Code
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
+                    <i class="fas fa-code text-4xl mb-2"></i>
+                    <p>No code repositories found.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- PPTs Content -->
+            <div id="pptsContent" class="tab-content hidden">
+                {% if ppts %}
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Found {{ ppts|length }} PowerPoint
+                        presentations:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for ppt in ppts %}
+                        <div
+                            class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition">
+                            <div class="h-40 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                                <img src="{{ ppt.thumbnail }}" alt="{{ ppt.source }}" class="h-20 object-contain">
+                            </div>
+                            <h3 class="font-bold text-lg text-academic-blue mb-2">{{ ppt.title }}</h3>
+                            <p class="text-gray-600 text-sm mb-3">{{ ppt.description }}</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-500">{{ ppt.source }}</span>
+                                <div class="flex gap-2">
+                                    <a href="{{ ppt.link }}" target="_blank"
+                                        class="bg-academic-blue text-white hover:bg-blue-700 px-3 py-1 rounded text-xs flex items-center">
+                                        <i class="fas fa-external-link-alt mr-1"></i> View
+                                    </a>
+                                    {% if ppt.direct_download %}
+                                    <a href="{{ ppt.link }}" download
+                                        class="bg-green-600 text-white hover:bg-green-700 px-3 py-1 rounded text-xs flex items-center">
+                                        <i class="fas fa-download mr-1"></i> Download
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-8 bg-academic-lightblue p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-academic-blue mb-2">How to use these presentations:</h3>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                            <li>These are actual PowerPoint files found through specialized search</li>
+                            <li>Download and adapt them for your project needs</li>
+                            <li>Always check the content and modify it to match your requirements</li>
+                            <li>Remember to cite sources if you use any content directly</li>
+                        </ul>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
+                    <i class="fas fa-file-powerpoint text-4xl mb-2"></i>
+                    <p>No PowerPoint presentations found for this topic.</p>
+                    <p class="text-sm mt-2">Try different search terms or check the direct links above</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Datasets Content -->
+            <div id="datasetsContent" class="tab-content hidden">
+                {% if datasets %}
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Found {{ datasets|length }} datasets:</h3>
+
+                    <!-- Kaggle Datasets Section -->
+                    <div class="mb-8">
+                        <div class="flex items-center mb-3">
+                            <img src="https://cdn4.iconfinder.com/data/icons/logos-and-brands/512/189_Kaggle_logo_logos-512.png"
+                                class="w-6 h-6 mr-2" alt="Kaggle">
+                            <h4 class="text-lg font-medium text-gray-800">Kaggle Datasets</h4>
+                        </div>
+
+                        {% set kaggle_datasets = datasets|selectattr('source', 'equalto', 'Kaggle')|list %}
+                        {% if kaggle_datasets %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {% for dataset in kaggle_datasets %}
+                            <div
+                                class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="font-bold text-lg text-academic-blue line-clamp-2">{{ dataset.title }}
+                                    </h3>
+                                    {% if dataset.votes %}
+                                    <span
+                                        class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center shrink-0 ml-2">
+                                        <i class="fas fa-star text-yellow-400 mr-1"></i> {{ dataset.votes }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ dataset.description }}</p>
+
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">
+                                        <i class="fas fa-database mr-1"></i> {{ dataset.size }}
+                                    </span>
+                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                                        <i class="fas fa-file-alt mr-1"></i> {{ dataset.license }}
+                                    </span>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                    <a href="{{ dataset.link }}" target="_blank"
+                                        class="text-blue-600 hover:text-blue-800 text-sm">
+                                        View on Kaggle
+                                    </a>
+                                    {% if dataset.direct_download %}
+                                    <a href="{{ dataset.download_link }}" target="_blank"
+                                        class="bg-green-600 text-white hover:bg-green-700 px-3 py-1 rounded text-xs flex items-center">
+                                        <i class="fas fa-download mr-1"></i> Download
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <p class="text-blue-800">No Kaggle datasets found. Try searching directly on <a
+                                    href="https://www.kaggle.com/datasets" target="_blank"
+                                    class="font-medium underline">Kaggle</a>.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Other Dataset Sources -->
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-800 mb-3">Other Dataset Sources</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for dataset in datasets if dataset.source != "Kaggle" %}
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="font-bold text-lg text-academic-blue">{{ dataset.title }}</h3>
+                                    <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        {{ dataset.source }}
+                                    </span>
+                                </div>
+                                <p class="text-gray-600 text-sm mb-3">{{ dataset.description }}</p>
+                                <div class="flex justify-end gap-2">
+                                    <a href="{{ dataset.link }}" target="_blank"
+                                        class="text-academic-blue hover:text-blue-700 px-3 py-1 border border-blue-200 rounded text-xs flex items-center">
+                                        <i class="fas fa-info-circle mr-1"></i> Details
+                                    </a>
+                                    {% if dataset.direct_download %}
+                                    <a href="{{ dataset.download_link }}" target="_blank"
+                                        class="bg-academic-blue text-white hover:bg-blue-700 px-3 py-1 rounded text-xs flex items-center">
+                                        <i class="fas fa-download mr-1"></i> Download
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mt-8 bg-academic-lightblue p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-academic-blue mb-2">Dataset Usage Tips:</h3>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                            <li>Check the license before using any dataset</li>
+                            <li>Preprocess the data to match your project requirements</li>
+                            <li>Always cite the dataset source in your project</li>
+                            <li>For Kaggle datasets, check the "Notebooks" tab for usage examples</li>
+                            <li>Look for datasets with clear documentation and examples</li>
+                        </ul>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
+                    <i class="fas fa-database text-4xl mb-2"></i>
+                    <p>No datasets found for this topic.</p>
+                    <p class="text-sm mt-2">Try searching for specific terms like "healthcare datasets" or "weather
+                        data"</p>
+                </div>
+                {% endif %}
+            </div>
+            <!-- Add this with your other tab-content divs -->
+            <div id="paraphraseContent" class="tab-content hidden">
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-xl font-semibold mb-4 text-academic-blue">Paraphrasing Tool</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Original Text</label>
+                            <textarea id="originalText" rows="10"
+                                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-academic-blue"
+                                placeholder="Paste your abstract or text to paraphrase (max 500 words)..."></textarea>
+                            <div class="flex justify-between mt-2">
+                                <span id="wordCount" class="text-xs text-gray-500">0 words</span>
+                                <button onclick="paraphraseText()"
+                                    class="bg-academic-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                                    <i class="fas fa-magic mr-2"></i>Paraphrase
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Paraphrased Version</label>
+                            <textarea id="paraphrasedText" rows="10" readonly
+                                class="w-full p-3 border rounded-lg bg-gray-50"
+                                placeholder="Your paraphrased text will appear here..."></textarea>
+                            <div class="flex justify-end gap-2 mt-2">
+                                <button onclick="copyParaphrased()"
+                                    class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                                <button onclick="resetParaphrase()"
+                                    class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">
+                                    <i class="fas fa-redo mr-1"></i>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-academic-lightblue p-4 rounded-lg">
+                        <h4 class="font-medium mb-2">Paraphrasing Tips:</h4>
+                        <ul class="list-disc pl-5 text-sm space-y-1">
+                            <li>Always verify the paraphrased text maintains your original meaning</li>
+                            <li>For technical terms, ensure the replacements are accurate</li>
+                            <li>Mix short and long sentences for better readability</li>
+                            <li>Consider changing active voice to passive voice or vice versa</li>
+                            <li>Remember to cite sources even when paraphrasing</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button id="scrollToTopBtn"
+        class="fixed bottom-8 right-8 bg-academic-blue text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-blue-700">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    <footer class="mt-auto pt-4 pb-6 border-t border-gray-100">
+        <div class="max-w-4xl mx-auto    px-4">
+            <div class="flex flex-col items-center">
+                <div class="mb-1 text-center">
+                    <h3 class="text-lg font-medium text-gray-700 mb-1">Academic Project Assistant</h3>
+                    <p class="text-sm text-gray-500">Your complete research companion</p>
+                </div>
+
+                <div class="flex flex-col items-center space-y-2">
+                    <p class="text-xs text-gray-400 mt-2">
+                        Made with <span class="text-red-400">♥</span> for students · Open to suggestions
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <a href="mailto:brucewaynebw369@gmail.com"
+                            class="hover:text-blue-600 transition flex items-center">
+                            brucewaynebw369@gmail.com
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            document.getElementById(tabName + 'Content').classList.remove('hidden');
+
+            document.querySelectorAll('[id$="Tab"]').forEach(tab => {
+                tab.classList.remove('border-academic-blue', 'text-academic-blue');
+                tab.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            document.getElementById(tabName + 'Tab').classList.add('border-academic-blue', 'text-academic-blue');
+            document.getElementById(tabName + 'Tab').classList.remove('border-transparent', 'text-gray-500');
+        }
+
+        let currentDomain = 'ai';
+
+        function toggleIdeas(domain) {
+            const container = document.getElementById('ideasContainer');
+            const wasHidden = container.classList.contains('hidden');
+            const wasCurrentDomain = domain === currentDomain;
+
+            // If clicking the same domain button, toggle visibility
+            if (wasCurrentDomain && !wasHidden) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            // Set new domain and fetch ideas
+            currentDomain = domain;
+            document.getElementById('ideasDomain').textContent = `${domain.toUpperCase()} Project Ideas`;
+
+            // Update active button styling
+            document.querySelectorAll('[id$="Btn"]').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'border-blue-300');
+            });
+            document.getElementById(`${domain}Btn`).classList.add('bg-blue-100', 'border-blue-300');
+
+            // Fetch and show ideas
+            fetchIdeas(domain);
+            container.classList.remove('hidden');
+        }
+
+        async function fetchIdeas(domain) {
+            try {
+                const response = await fetch(`/get_random_ideas?domain=${domain}&count=6`);
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                const list = document.getElementById('ideasList');
+
+                list.innerHTML = '';
+                data.ideas.forEach(idea => {
+                    const ideaElement = document.createElement('button');
+                    ideaElement.textContent = idea;
+                    ideaElement.className = 'w-full p-3 text-left hover:bg-blue-50 rounded-lg transition text-sm border border-gray-100';
+                    ideaElement.onclick = () => {
+                        document.getElementById('searchInput').value = idea;
+                        document.getElementById('searchForm').submit();
+                    };
+                    list.appendChild(ideaElement);
+                });
+
+            } catch (error) {
+                console.error('Error fetching ideas:', error);
+                document.getElementById('ideasList').innerHTML =
+                    '<p class="text-red-500">Failed to load ideas. Please try again.</p>';
+            }
+        }
+
+        function refreshIdeas() {
+            fetchIdeas(currentDomain);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.getElementById('resultsSection') && !document.getElementById('resultsSection').classList.contains('hidden')) {
+                showTab('papers');
+            }
+
+            document.querySelectorAll('.read-more-btn').forEach(button => {
+                button.addEventListener('click', toggleReadMore);
+            });
+        });
+
+        function toggleReadMore(event) {
+            const button = event.target;
+            const container = button.parentElement;
+            const summaryText = container.querySelector('.summary-text');
+            const summaryMore = container.querySelector('.summary-more');
+
+            if (summaryMore.classList.contains('hidden')) {
+                summaryMore.classList.remove('hidden');
+                button.textContent = ' Read less';
+            } else {
+                summaryMore.classList.add('hidden');
+                button.textContent = '...Read more';
+            }
+        }
+
+        function filterPapers() {
+            const pdfFilter = document.getElementById('pdfFilter').checked;
+            const paperItems = document.querySelectorAll('.paper-item');
+
+            paperItems.forEach(item => {
+                const hasPdf = item.dataset.haspdf === 'true';
+
+                if (!pdfFilter || hasPdf) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function hideIdeasSection() {
+            const section = document.querySelector('.bg-academic-lightblue');
+            section.style.display = 'none';
+            localStorage.setItem('hideIdeasSection', 'true');
+
+            // Optional: Show a toast notification
+            showToast('Project ideas section hidden. It will remain hidden until you clear browser data.', 'info');
+        }
+
+        // Scroll to Top Button
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+
+        window.addEventListener('scroll', function () {
+            // Show button when scrolled halfway down the page
+            if (window.scrollY > (document.body.scrollHeight - window.innerHeight) / 2) {
+                scrollToTopBtn.classList.remove('opacity-0', 'invisible');
+                scrollToTopBtn.classList.add('opacity-100', 'visible');
+            } else {
+                scrollToTopBtn.classList.add('opacity-0', 'invisible');
+                scrollToTopBtn.classList.remove('opacity-100', 'visible');
+            }
+        });
+
+        // Word counter for original text
+        document.getElementById('originalText').addEventListener('input', function () {
+            const count = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
+            document.getElementById('wordCount').textContent = `${count} words`;
+        });
+
+        async function paraphraseText() {
+            const text = document.getElementById('originalText').value.trim();
+            if (!text) {
+                alert("Please enter text to paraphrase");
+                return;
+            }
+
+            const btn = document.querySelector('button[onclick="paraphraseText()"]');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/paraphrase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    alert(result.error + (result.fallback ? "\n\n" + result.fallback : ""));
+                } else {
+                    document.getElementById('paraphrasedText').value = result.paraphrased;
+                }
+            } catch (error) {
+                alert("Connection error. Please try again later.");
+                console.error("Paraphrase error:", error);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-magic mr-2"></i>Paraphrase';
+                btn.disabled = false;
+            }
+        }
+
+        function copyParaphrased() {
+            const textarea = document.getElementById('paraphrasedText');
+            textarea.select();
+            document.execCommand('copy');
+            alert("Copied to clipboard!");
+        }
+
+        function resetParaphrase() {
+            if (confirm("Clear both text fields?")) {
+                document.getElementById('originalText').value = '';
+                document.getElementById('paraphrasedText').value = '';
+                document.getElementById('wordCount').textContent = '0 words';
+            }
+        }
+
+        scrollToTopBtn.addEventListener('click', function () {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
+</body>
+
+</html>

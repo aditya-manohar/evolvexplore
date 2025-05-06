@@ -43,59 +43,33 @@ def before_request():
     clear_old_cache()
 
 def fetch_scholar_results(query):
-    """Fetch all Google Scholar results with direct PDF links"""
     try:
-        scholar_url = f"https://scholar.google.com/scholar?q={urllib.parse.quote(query)}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        # Replace with this API-based approach
+        api_url = "https://serpapi.com/search.json"
+        params = {
+            'engine': 'google_scholar',
+            'q': query,
+            'api_key': 'b8dd20a4fc927ceb6d8e0283435af5f05abb71a82f263c47eefffacadcd2e726', 
+            'num': 20
         }
-        response = requests.get(scholar_url, headers=headers, timeout=15)
+        response = requests.get(api_url, params=params, timeout=15)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        data = response.json()
         
         papers = []
-        
-        for result in soup.select('.gs_r.gs_or.gs_scl'):
-            title_elem = result.select_one('.gs_rt')
-            if not title_elem:
-                continue
-                
-            title = title_elem.text
-            link = title_elem.find('a')['href'] if title_elem.find('a') else '#'
-            
-            pdf_link = None
-            pdf_elem = result.select_one('div.gs_or_ggsm a')
-            if pdf_elem and ('[PDF]' in pdf_elem.text or pdf_elem.text.endswith('.pdf')):
-                pdf_link = pdf_elem['href']
-            
-            # Extract author/source/year info
-            author_info = result.select_one('.gs_a') or ''
-            if author_info:
-                author_info = author_info.text
-                published = author_info.split('-')[-1].strip()
-            else:
-                published = "Date not available"
-            
-            # Extract snippet
-            snippet = result.select_one('.gs_rs') or ''
-            if snippet:
-                snippet = snippet.text.strip()
-            
+        for result in data.get('organic_results', []):
             papers.append({
-                "title": title,
-                "summary": snippet or author_info,
-                "link": link,
-                "pdf_link": pdf_link or '',
+                "title": result.get('title'),
+                "summary": result.get('snippet', ''),
+                "link": result.get('link', '#'),
+                "pdf_link": result.get('inline_links', {}).get('pdf', {}).get('link', ''),
                 "source": "Google Scholar",
-                "published": published,
-                "has_pdf": bool(pdf_link),
-                "direct_pdf": bool(pdf_link)
+                "published": result.get('publication_info', {}).get('summary', 'Date not available'),
+                "direct_pdf": bool(result.get('inline_links', {}).get('pdf', {}).get('link'))
             })
-            
-        return papers[:20]  # Return top 15 results
-        
+        return papers
     except Exception as e:
-        print(f"Error fetching Google Scholar results: {str(e)}")
+        print(f"Scholar API error: {str(e)}")
         return []
 
 def fetch_papers(query):
@@ -104,7 +78,7 @@ def fetch_papers(query):
             return cache['papers'][query]
         
         papers = []
-        
+
         scholar_papers = fetch_scholar_results(query)
         papers.extend(scholar_papers)
         
@@ -113,7 +87,7 @@ def fetch_papers(query):
         try:
             response = requests.get(arxiv_url, timeout=15)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'xml')
+            soup = BeautifulSoup(response.text, 'lxml-xml')
             for entry in soup.find_all('entry'):
                 papers.append({
                     "title": entry.title.text.strip(),

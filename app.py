@@ -105,6 +105,9 @@ def fetch_papers(query):
         
         papers = []
         
+        scholar_papers = fetch_scholar_results(query)
+        papers.extend(scholar_papers)
+        
         # 1. Fetch arXiv papers
         arxiv_url = f"http://export.arxiv.org/api/query?search_query=all:{query}&max_results=50"
         try:
@@ -126,8 +129,6 @@ def fetch_papers(query):
             print(f"Error fetching arXiv papers: {str(e)}")
         
         # 2. Fetch Google Scholar results (now returns individual papers)
-        scholar_papers = fetch_scholar_results(query)
-        papers.extend(scholar_papers)
         
         # 3. Semantic Scholar (optional - keep if you want)
         sem_scholar_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={query}&limit=50"

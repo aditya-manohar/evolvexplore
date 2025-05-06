@@ -3,3 +3,4 @@ requests
 nltk
 beautifulsoup4
 gunicorn
+lxml

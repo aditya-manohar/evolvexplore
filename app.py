@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, render_template, request, jsonify
 import requests
 from datetime import datetime
@@ -8,13 +9,17 @@ import os
 from bs4 import BeautifulSoup
 import nltk
 from nltk.corpus import wordnet
-from random import choice
+from random import choice, random
 from project_ideas import PROJECT_IDEAS
 
 app = Flask(__name__)
 
 app.config['DEBUG'] = True      
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# API Keys
+CORE_API_KEY = 'Wul8QFhyPUK7MjRvC06HJoTYf2AaqDBe'
+SERPAPI_KEY = 'b8dd20a4fc927ceb6d8e0283435af5f05abb71a82f263c47eefffacadcd2e726'
 
 # Simple cache with timeout
 cache = {
@@ -42,6 +47,44 @@ def clear_old_cache():
 def before_request():
     clear_old_cache()
 
+def fetch_core_papers(query):
+    """Fetch papers from CORE.ac.uk API"""
+    try:
+        url = "https://api.core.ac.uk/v3/search/works"
+        params = {
+            'q': query,
+            'limit': 20,
+            'apiKey': CORE_API_KEY
+        }
+        headers = {'Authorization': f'Bearer {CORE_API_KEY}'}
+        
+        response = requests.get(url, params=params, headers=headers, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+        
+        papers = []
+        for result in data.get('results', []):
+            pdf_link = ''
+            if result.get('downloadUrl'):
+                pdf_link = result['downloadUrl']
+            elif result.get('fullTextIdentifier'):
+                pdf_link = result['fullTextIdentifier']
+            
+            papers.append({
+                "title": result.get('title', 'No title available'),
+                "summary": result.get('abstract', 'No abstract available')[:500] + '...',
+                "link": result.get('doiUrl', result.get('url', '#')),
+                "pdf_link": pdf_link,
+                "source": "CORE.ac.uk",
+                "published": result.get('publishedDate', 'Date not available'),
+                "authors": ', '.join(author['name'] for author in result.get('authors', [])[:3]),
+                "direct_pdf": bool(pdf_link)
+            })
+        return papers
+    except Exception as e:
+        print(f"CORE.ac.uk API error: {str(e)}")
+        return []
+
 def fetch_scholar_results(query):
     try:
         # Replace with this API-based approach
@@ -49,7 +92,7 @@ def fetch_scholar_results(query):
         params = {
             'engine': 'google_scholar',
             'q': query,
-            'api_key': 'b8dd20a4fc927ceb6d8e0283435af5f05abb71a82f263c47eefffacadcd2e726', 
+            'api_key': SERPAPI_KEY, 
             'num': 20
         }
         response = requests.get(api_url, params=params, timeout=15)
@@ -79,6 +122,11 @@ def fetch_papers(query):
         
         papers = []
 
+        # Fetch from CORE.ac.uk first
+        core_papers = fetch_core_papers(query)
+        papers.extend(core_papers)
+        
+        # Then fetch from Google Scholar
         scholar_papers = fetch_scholar_results(query)
         papers.extend(scholar_papers)
         
@@ -102,8 +150,6 @@ def fetch_papers(query):
         except Exception as e:
             print(f"Error fetching arXiv papers: {str(e)}")
         
-        # 2. Fetch Google Scholar results (now returns individual papers)
-        
         # 3. Semantic Scholar (optional - keep if you want)
         sem_scholar_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={query}&limit=50"
         try:
@@ -125,8 +171,17 @@ def fetch_papers(query):
         except Exception as e:
             print(f"Error fetching Semantic Scholar papers: {str(e)}")
         
-        cache['papers'][query] = papers
-        return papers
+        # Remove duplicates by title
+        seen_titles = set()
+        unique_papers = []
+        for paper in papers:
+            title = paper['title'].lower().strip()
+            if title not in seen_titles:
+                seen_titles.add(title)
+                unique_papers.append(paper)
+        
+        cache['papers'][query] = unique_papers
+        return unique_papers
     
     except Exception as e:
         print(f"General error fetching papers: {str(e)}")
@@ -265,7 +320,6 @@ def fetch_datasets(query):
                 "student_friendly": True,
                 "thumbnail": "https://www.gstatic.com/images/branding/product/1x/dataset_search_48dp.png"
             },
-            
             {
                 "title": "Data.gov (US Government)",
                 "description": "250K+ datasets (census, transportation, energy)",
